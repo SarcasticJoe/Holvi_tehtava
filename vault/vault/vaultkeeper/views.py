@@ -67,24 +67,24 @@ def Message(request):
 		type = request.POST['type']
 		
 		if(type == 'authorization'):
-			c_id = request.POST['card_id']
-			t_id = request.POST['transaction_id']
-			m_name = request.POST['merchant_name']
-			m_country = request.POST['merchant_country']
-			m_city = request.POST['merchant_city']
-			m_mcc = request.POST['merchant_mcc']
-			bill_amount = request.POST['billing_amount']
-			bill_currency = request.POST['billing_currency']
-			trans_amount = request.POST['transaction_amount']
-			trans_currency = request.POST['transaction_currency']
+			c_id			= request.POST['card_id']
+			t_id			= request.POST['transaction_id']
+			m_name			= request.POST['merchant_name']
+			m_country		= request.POST['merchant_country']
+			m_city			= request.POST['merchant_city']
+			m_mcc			= request.POST['merchant_mcc']
+			bill_amount 	= request.POST['billing_amount']
+			bill_currency	= request.POST['billing_currency']
+			trans_amount	= request.POST['transaction_amount']
+			trans_currency	= request.POST['transaction_currency']
 			
 			cards = Card.objects.filter(cardID=c_id)
 			
 			if(cards.count() == 1):
 				card = cards[0]
+				balance = card.debit - card.credit
 				
-				if (card.debit >= bill_amount):
-					card.debit = card.debit - bill_amount
+				if (balance >= bill_amount):
 					card.credit = card.credit + bill_amount
 					trans = Transaction(transactionID = t_id, cardID = c_id, datetime = datetime.now(), authorized = True,
 					merchant_name = m_name, merchant_country = m_country, merchant_city = m_city, merchant_mcc = m_mcc,
@@ -104,39 +104,40 @@ def Message(request):
 			return HttpResponse(status = 200)
 		
 		if(type == 'presentment'):
-			c_id = request.POST['card_id']
-			t_id = request.POST['transaction_id']
-			m_name = request.POST['merchant_name']
-			m_country = request.POST['merchant_country']
-			m_city = request.POST['merchant_city']
-			m_mcc = request.POST['merchant_mcc']
-			bill_amount = request.POST['billing_amount']
-			bill_currency = request.POST['billing_currency']
-			trans_amount = request.POST['transaction_amount']
-			trans_currency = request.POST['transaction_currency']
-			sett_amount = request.POST['settlement_amount']
-			sett_currency = request.POST['settlement_currency']
+			c_id			= request.POST['card_id']
+			t_id			= request.POST['transaction_id']
+			m_name			= request.POST['merchant_name']
+			m_country		= request.POST['merchant_country']
+			m_city			= request.POST['merchant_city']
+			m_mcc			= request.POST['merchant_mcc']
+			bill_amount		= request.POST['billing_amount']
+			bill_currency	= request.POST['billing_currency']
+			trans_amount	= request.POST['transaction_amount']
+			trans_currency	= request.POST['transaction_currency']
+			sett_amount		= request.POST['settlement_amount']
+			sett_currency	= request.POST['settlement_currency']
 			
 			transactions = Transaction.objects.filter(transactionID = t_id)
 			
 			if((transaction.count == 1) and (transaction[0].authorized == True) and (transaction[0].settled == False)):
 				transaction = transactions[0]
 				
-				transaction.settled = True
-				transaction.merchant_name = m_name
-				transaction.merchant_country = m_country
-				transaction.merchant_city = m_city
-				transaction.merchant_mcc = m_mcc
-				transaction.transaction_currency = trans_currency
-				transaction.transaction_amount = trans_amount
-				transaction.billing_currency = bill_currency
-				transaction.billing_amount = bill_amount
-				transaction.settlement_currency = sett_currency
-				transaction.settlement_amount = sett_amount
+				card.credit = card.credit - transaction.billing_amount
+				
+				transaction.settled					= True
+				transaction.merchant_name			= m_name
+				transaction.merchant_country		= m_country
+				transaction.merchant_city			= m_city
+				transaction.merchant_mcc			= m_mcc
+				transaction.transaction_currency	= trans_currency
+				transaction.transaction_amount		= trans_amount
+				transaction.billing_currency 		= bill_currency
+				transaction.billing_amount			= bill_amount
+				transaction.settlement_currency		= sett_currency
+				transaction.settlement_amount		= sett_amount
 				
 				#Kortti
-				card.credit = card.credit - bill_amount
-				card.debit = card.debit + bill_amount - settlement_amount
+				card.debit = card.debit - settlement_amount
 		
 				#Tili
 				account.debit = account.debit + settlement_amount

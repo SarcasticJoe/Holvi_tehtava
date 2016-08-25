@@ -1,0 +1,60 @@
+Huom: En ole aiemmin kirjottanut teknistä dokumentaatiota etenkään tietokannoista suomeksi (ainoastaan englanniksi
+ja ruotsiksi) jonka takia termit voivat heittää aika pahasti.
+
+Implementaatiossa on neljä erillaista taulukkoa jossa toimintaan liityviä esineitä pidetään.
+
+CentralAccount-taulukossa pidetään pää-tilit jossa eri asiakkaiden rahat oikeastaan ovat. Syy siihen että pää-tilit
+ovat taulukossa eikä yhtenä monoliitisena esineenä on että niin voi olla monta pää-tiliä eri maissa. Pää-tileillä,
+kuten myös korteilla on yhden saldon sijaan sekä debit että credit-puolensa. Syy tähän on että se sallii sen että
+rahaa voidaan presentment:in tultua laittaa sivuun odottamaan että se siirretään luottokortti-firman kautta
+vastaanottajalle. Näin vältetään se että jouduttaisiin luomaan oma taulukko/esine luottokortti-yhtiö velalle. Tileillä
+olevat rahat joita ei olla lähettämässä luottokortti-yhtiölle ovat credit-puolella niin että menevät tasan debit-puolella
+käytettäviä varoja pitävien korttien kanssa.
+
+Customer-taulukossa pidetään asiakkaan perustiedot kuten nimi, sähkö sekä tavallinen osoite. Korttien tiedot ovat erillisissä
+taulukoissa niin että asiakkailla voisi olla useita kortteja esim. eri firmojen puolesta sekä eri maissa jos he sattuvat
+asioimaan useammassa kuin yhdessä maassa.
+
+Card-taulukossa pidetään korttien tiedot, m.m debit ja credit-puolet, kortin valuutta, sekä mihin pää-tiliin kortti liittyy.
+Syy siihen että kortilla ei ole yhtä saldoa vaan erilliset debit ja credit-puolet on niin että saadaan ainoastaan
+Authorization-viestin saaneet maksu-tapahtumat erilleen niistä joille on tullut myös Presentment-viesti. Kun Authorization-viesti
+tulee katsotaan että onko tilillä katetta (eli onko debit-puoli ainakin summan verran isompi kuin credit-puoli) ja jos on, luodaan
+uusi lisäys Transaction-taulukkoon sekä lisätään summa credit-puolelle. Kun Presentment-viesti sitten tulee niin aluksi katsotaan
+että onko vastaava Authorization viesti jo tullut ja jos on, niin ruvetaan oikeasti ottamaan rahoja kortilta. Ensiksi poistetaan
+alkuperäinen katevaraus credit-puolelta, päivitetään transaktio lopullisilla tiedoilla ja otetaan lopullinen summa debit-puolelta
+sekä lisätään vastaava summa korttiin liittyvän pää-tilin debit-puolelle.
+
+Kuten nimestä voi päätellä Transaction-taulukossa pidetään tiedot transaktioista. Kaikki se mitä Authorization ja Presentment-viesteissä
+kerrotaan tallennetaan Transaction-taulukkoon. Taulukossa on myös boolean-arvot sille että ovatko transaktion Authorization sekä
+Presentment-viestit tulleet niin että niitä voi käydä läpi ja katsoa että mitä niistä voi ruveta maksamaan luottokortti-yritykselle.
+Transaktion Authorization-viestin tiedot eivät välttämättä täysin täsmää Presentment-viestin kanssa jonka takia Presentment-viestin
+tullessa transaktion tiedot päivitetään sen sisällön mukaan. Tämä voisi tietenkin olla fiksumpi eikä vaan olettaa että Presentment:eissä
+ei ole mitään vikaa, mutta sille ei tullut mitään speksejä eli en ruvennut implementoimaan fiksumpaa logiikka. Kun Presentment-viesti
+saapuu, transaktioon laitetaan merkintä että sen presentment-viesti on saapunut ja sen tiedot päivitetään sen sisältöä vastaavaksi.
+Ennen kuin lopullinen maksu-summa poistetaan kortin debit-puolelta ja lisätään siihen liittyvän pää-tilin debit-puolelle
+Authorization-viestin yhteydessä tehty katevaraus poistetaan kortin credit-puolelta niin ettei kortilta ruveta ottamaan rahaa kahteen
+kertaan. 
+
+Valitettavasti en keksinyt mitään hyvää tapaa miten vältetään että tili ei mene miinukselle jos Authorization-viestissä oleva summa on
+pienempi kuin Presentment-viestissä oleva. Tämä siis sallii että tili voi mennä miinukselle. En ole myöskään implementoinut mitään sitä
+vastaan että luottokortti-firman puolelta tulee negatiivista summia vaan luotan siihen että heiltä tulevissa viesteissä ei ole mitään
+outoa. En ole myöskään implementoinut mitään sen varalle että luottokortti-firmalta tulevassa viestissä billing-valuutta on eri
+valuutta kuin missä tili on vaan luotan että luottokortti-firma osaa Authorization ja Presentment-viesteissään käyttää oikeaa
+valuuttaa. Huomautan näistä puutteista sen takia että en missään nimessä jättäisi näitä puutteita järjestelmään jota käytetään ihan
+oikeiden asiakkaiden palvelemiseen.
+
+Järjestelmän toiminnan tutkimiseksi tein kaikille taulukko entry:lle/model:eille omat serializerit ja niitä käyttävät web-view:t (niin
+kaikki tietyn tyypin sekä yksittäisiä entry:jä/object:eja listaavat) niin että järjestelmää testatessa voi katsoa että tasan mitä
+tietokantaan on laitettu testauksen edetessä. Tein myös yhden view:n joka lisää tietokantaan kaksi asiakasta, central-account:in sekä
+kummallekkin asiakkaalle kortin joka liittyy tähän tiliin. Kommunikaatio luottokortti-firman palvelinten kanssa hoituu POST-viesteillä
+ja vastaukset (HTTP 200 jos onnistui ja 403 is epäonnistui) tulevat HTTP-vastauksina. Tällä hetkellä järjestelmässä ei ole oikeastaan
+mitään suojauksia sille että joku toinen kuin luottokortti-yrityksen palvelin kommunikoi palvelimen kanssa, mutta spekseissä ei lukenut
+mitään ja yritin seurata niitä kunnolla. Suurin puute järjestelmässä on se miten settlement:tti tehdään sillä ne eivät vielä tule
+automatisoituna batch-prosessina, vaan Settlement-viestinä Authorization ja Presentment-viestien tapaan. Kun Settlement-viesti tulee
+siinä löytyvä tili "settlataan" Card taulukon/esineiden kuvauksessa löytyvällä tavalla. En vaitettavasti ole vielä tehnyt
+dummy-implementaatiota sille että oikeasti lähetetään rahoja luottokortti-firmalle.
+
+En ole ehtinyt valitettavasti kunnolla testaamaan järjestelmää kokonaisuudessaan. Authorization, Presentment ja Settlement-toimintoja
+on testattu niin että järjestelmä itse luo datan joka näissä viesteissä pitäisi olla, mutta sitä että järjestelmälle lähetettäisiin
+kunnollinen POST-viesti jossa kaikki tämä löytyy ei olla testattu.
+

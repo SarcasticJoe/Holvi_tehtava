@@ -1,6 +1,12 @@
 Huom: En ole aiemmin kirjottanut teknistä dokumentaatiota etenkään tietokannoista suomeksi (ainoastaan englanniksi
 ja ruotsiksi) jonka takia termit voivat heittää aika pahasti.
 
+Tehtäväkuvauksessa on muuten yksi ristiriita johon en oikein tiedä että miten siihen pitäisi puuttua eli huomautan siitä nyt
+dokumentaation alussa. Järjestelmän kuvauksessa kerrotaan että ostotapahtuman presentment-viestin summa ei saa ylittää saman
+tapahtuman authorization-viestin summaa, mutta lopussa löytyvän esimerkin tapauksessa valuutan arvo-muutosten takia käy juuri näin.
+Kuvauksessa ei tosin kerrota että miten tämä pätee tapauksiin jossa osto ja maksu ovat eri valuutassa (eli viestien "transaction"
+ja "billing" valuutat eivät täsmää) jolloin voisi tulkita että kunhan "transaction"-summa on sama tai alempi
+
 Implementaatiossa on neljä erillaista taulukkoa jossa toimintaan liityviä esineitä pidetään.
 
 CentralAccount-taulukossa pidetään pää-tilit jossa eri asiakkaiden rahat oikeastaan ovat. Syy siihen että pää-tilit
@@ -35,26 +41,23 @@ Ennen kuin lopullinen maksu-summa poistetaan kortin debit-puolelta ja lisätää
 Authorization-viestin yhteydessä tehty katevaraus poistetaan kortin credit-puolelta niin ettei kortilta ruveta ottamaan rahaa kahteen
 kertaan. 
 
-Valitettavasti en keksinyt mitään hyvää tapaa miten vältetään että tili ei mene miinukselle jos Authorization-viestissä oleva summa on
-pienempi kuin Presentment-viestissä oleva. Tämä siis sallii että tili voi mennä miinukselle. En ole myöskään implementoinut mitään sitä
-vastaan että luottokortti-firman puolelta tulee negatiivista summia vaan luotan siihen että heiltä tulevissa viesteissä ei ole mitään
-outoa. En ole myöskään implementoinut mitään sen varalle että luottokortti-firmalta tulevassa viestissä billing-valuutta on eri
-valuutta kuin missä tili on vaan luotan että luottokortti-firma osaa Authorization ja Presentment-viesteissään käyttää oikeaa
-valuuttaa. Huomautan näistä puutteista sen takia että en missään nimessä jättäisi näitä puutteita järjestelmään jota käytetään ihan
-oikeiden asiakkaiden palvelemiseen.
+Valitettavasti en keksinyt mitään hyvää tapaa miten vältetään että tili ei mene miinukselle jos Authorization-viestissä oleva 
+"billing"-summa on pienempi kuin Presentment-viestissä oleva. Tämä siis sallii että tili voi mennä miinukselle. En ole myöskään
+implementoinut mitään sitä vastaan että luottokortti-firman puolelta tulee negatiivista summia vaan luotan siihen että heiltä tulevissa
+viesteissä ei ole mitään outoa. En ole myöskään implementoinut mitään sen varalle että luottokortti-firmalta tulevassa viestissä
+billing-valuutta on eri valuutta kuin missä tili on vaan luotan että luottokortti-firma osaa Authorization ja Presentment-viesteissään
+käyttää oikeaa valuuttaa. Huomautan näistä puutteista sen takia että en missään nimessä jättäisi näitä puutteita järjestelmään jota
+käytetään ihan oikeiden asiakkaiden palvelemiseen.
 
-Järjestelmän toiminnan tutkimiseksi tein kaikille taulukko entry:lle/model:eille omat serializerit ja niitä käyttävät web-view:t (niin
+Järjestelmän toiminnan tutkimiseksi tein kaikille taulukko entry:lle/model:eille omat serializerit ja niitä käyttävät web-view:t (sekä
 kaikki tietyn tyypin sekä yksittäisiä entry:jä/object:eja listaavat) niin että järjestelmää testatessa voi katsoa että tasan mitä
 tietokantaan on laitettu testauksen edetessä. Tein myös yhden view:n joka lisää tietokantaan kaksi asiakasta, central-account:in sekä
-kummallekkin asiakkaalle kortin joka liittyy tähän tiliin. Kommunikaatio luottokortti-firman palvelinten kanssa hoituu POST-viesteillä
+molemmille asiakkaalle kortin joka liittyy tähän tiliin. Kommunikaatio luottokortti-firman palvelinten kanssa hoituu POST-viesteillä
 ja vastaukset (HTTP 200 jos onnistui ja 403 is epäonnistui) tulevat HTTP-vastauksina. Tällä hetkellä järjestelmässä ei ole oikeastaan
 mitään suojauksia sille että joku toinen kuin luottokortti-yrityksen palvelin kommunikoi palvelimen kanssa, mutta spekseissä ei lukenut
-mitään ja yritin seurata niitä kunnolla. Suurin puute järjestelmässä on se miten settlement:tti tehdään sillä ne eivät vielä tule
-automatisoituna batch-prosessina, vaan Settlement-viestinä Authorization ja Presentment-viestien tapaan. Kun Settlement-viesti tulee
-siinä löytyvä tili "settlataan" Card taulukon/esineiden kuvauksessa löytyvällä tavalla. En vaitettavasti ole vielä tehnyt
-dummy-implementaatiota sille että oikeasti lähetetään rahoja luottokortti-firmalle.
+mitään tämän suhteen ja päätin siten keskittyä tehtävä-kuvauksessa kerrottuun.
 
-En ole ehtinyt valitettavasti kunnolla testaamaan järjestelmää kokonaisuudessaan. Authorization, Presentment ja Settlement-toimintoja
+En ole myöskään ehtinyt testaamaan järjestelmää kunnolla kokonaisuudessaan. Authorization, Presentment ja Settlement-toimintoja
 on testattu niin että järjestelmä itse luo datan joka näissä viesteissä pitäisi olla, mutta sitä että järjestelmälle lähetettäisiin
 kunnollinen POST-viesti jossa kaikki tämä löytyy ei olla testattu.
 
